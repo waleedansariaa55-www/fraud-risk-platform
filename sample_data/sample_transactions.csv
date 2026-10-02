@@ -1,0 +1,11 @@
+external_transaction_id,customer_id,amount,transaction_datetime,payment_method,ip_address,location,device_info,customer_account_age_days,previous_transaction_count,notes
+TXN-2001,CUST-501,45.99,2026-09-10 09:15:00,credit_card,102.89.23.11,Lagos NG,Chrome/Android,320,18,
+TXN-2002,CUST-502,1250.00,2026-09-10 09:20:00,bank_transfer,102.89.23.12,Lagos NG,Firefox/Windows,4,1,New account large transfer
+TXN-2003,CUST-503,19.99,2026-09-10 10:05:00,wallet,41.203.75.4,Karachi PK,Safari/iOS,600,120,
+TXN-2004,CUST-501,75.00,2026-09-10 12:40:00,credit_card,102.89.23.11,Lagos NG,Chrome/Android,320,19,
+TXN-2005,CUST-504,9800.00,2026-09-10 02:11:00,crypto,185.220.101.7,Unknown,Unknown,1,0,Suspicious - new account odd hour
+TXN-2006,CUST-505,32.50,2026-09-11 14:00:00,debit_card,203.0.113.44,Islamabad PK,Chrome/Windows,150,7,
+TXN-2007,CUST-502,980.00,2026-09-11 03:30:00,bank_transfer,102.89.23.12,Lagos NG,Firefox/Windows,4,2,Second large transfer in a day
+TXN-2008,CUST-506,120.00,2026-09-11 16:45:00,credit_card,89.34.22.101,Dubai AE,Safari/MacOS,45,3,
+TXN-2009,CUST-507,15.00,2026-09-12 08:00:00,wallet,196.52.14.9,Nairobi KE,Chrome/Android,730,300,
+TXN-2010,CUST-504,7600.00,2026-09-12 02:05:00,crypto,185.220.101.7,Unknown,Unknown,1,1,Same device as TXN-2005

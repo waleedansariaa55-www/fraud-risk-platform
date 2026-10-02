@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ledger — Fraud & Risk Console</title>
+<style>
+  :root{
+    --bg:#F7F8FA; --panel:#FFFFFF; --ink:#1A1F27; --ink-soft:#5B6472;
+    --line:#E2E5EA; --line-strong:#C9CED6;
+    --rail:#12161C; --rail-ink:#C7CDD6; --rail-ink-dim:#7C8593; --rail-accent:#EDEDED;
+    --accent:#2F5D8A;
+    --risk-low:#2F7A6E; --risk-low-bg:#E7F3F0;
+    --risk-med:#B8791E; --risk-med-bg:#FBF0DD;
+    --risk-high:#B33A3A; --risk-high-bg:#FAEAEA;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: -apple-system, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;}
+  a{color:inherit;}
+
+  /* ---------- Auth screen ---------- */
+  #auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .auth-box{width:100%;max-width:380px;}
+  .brand{display:flex;align-items:baseline;gap:8px;margin-bottom:28px;}
+  .brand-mark{width:22px;height:22px;background:var(--ink);flex:none;position:relative;}
+  .brand-mark::after{content:"";position:absolute;inset:5px;border:1.5px solid var(--bg);}
+  .brand-name{font-size:17px;font-weight:600;letter-spacing:-0.01em;}
+  .brand-sub{color:var(--ink-soft);font-size:12.5px;}
+  .auth-tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:22px;}
+  .auth-tab{flex:1;text-align:center;padding:10px 0;font-size:13px;color:var(--ink-soft);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;}
+  .auth-tab.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:600;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12.5px;color:var(--ink-soft);margin-bottom:5px;}
+  .field input,.field select{width:100%;padding:9px 10px;border:1px solid var(--line-strong);background:var(--panel);border-radius:3px;font-size:13.5px;font-family:var(--sans);color:var(--ink);}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--accent);}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:3px;border:1px solid transparent;font-size:13.5px;font-weight:600;cursor:pointer;font-family:var(--sans);}
+  .btn-primary{background:var(--ink);color:#fff;width:100%;}
+  .btn-primary:hover{background:#000;}
+  .btn-ghost{background:transparent;border-color:var(--line-strong);color:var(--ink);}
+  .btn-ghost:hover{background:var(--panel);}
+  .btn-sm{padding:6px 11px;font-size:12.5px;}
+  .form-note{font-size:12px;color:var(--ink-soft);margin-top:14px;line-height:1.5;}
+  .error-msg{background:var(--risk-high-bg);color:var(--risk-high);border:1px solid #EFC9C9;padding:9px 11px;border-radius:3px;font-size:12.5px;margin-bottom:14px;display:none;}
+  .hint-box{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:12px 14px;margin-top:18px;font-size:12px;color:var(--ink-soft);}
+  .hint-box strong{color:var(--ink);}
+
+  /* ---------- App shell ---------- */
+  #app-screen{display:none;min-height:100vh;}
+  .shell{display:flex;min-height:100vh;}
+  .rail{width:220px;flex:none;background:var(--rail);color:var(--rail-ink);display:flex;flex-direction:column;padding:20px 14px;}
+  .rail-brand{display:flex;align-items:center;gap:8px;padding:0 6px 20px;margin-bottom:16px;border-bottom:1px solid #262B33;}
+  .rail-brand .brand-mark{background:var(--rail-ink);}
+  .rail-brand .brand-mark::after{border-color:var(--rail);}
+  .rail-brand-name{font-size:14.5px;font-weight:600;color:#fff;}
+  .rail-nav{display:flex;flex-direction:column;gap:1px;flex:1;}
+  .rail-link{padding:8px 10px;border-radius:3px;font-size:13px;color:var(--rail-ink-dim);cursor:pointer;}
+  .rail-link:hover{color:#fff;}
+  .rail-link.active{background:#1D232B;color:#fff;font-weight:600;}
+  .rail-foot{border-top:1px solid #262B33;padding-top:14px;margin-top:10px;}
+  .rail-user{font-size:12.5px;color:#fff;margin-bottom:2px;}
+  .rail-role{display:inline-block;font-size:10.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--rail-ink-dim);margin-bottom:10px;}
+  .rail-biz{font-size:11.5px;color:var(--rail-ink-dim);margin-bottom:10px;}
+
+  .main{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .topbar{padding:18px 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:var(--panel);}
+  .topbar h1{font-size:17px;margin:0;font-weight:600;}
+  .topbar-sub{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+  .content{padding:24px 28px;flex:1;overflow:auto;}
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;align-items:center;}
+  .toolbar input,.toolbar select{padding:7px 9px;border:1px solid var(--line-strong);border-radius:3px;font-size:12.5px;background:var(--panel);font-family:var(--sans);}
+  .toolbar input[type="text"]{width:180px;}
+  .toolbar .spacer{flex:1;}
+
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.03em;color:var(--ink-soft);font-weight:600;padding:9px 12px;border-bottom:1px solid var(--line);background:#FBFBFC;}
+  td{padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  tr.row-clickable{cursor:pointer;}
+  tr.row-clickable:hover td{background:#FAFAFA;}
+  .mono{font-family:var(--mono);font-size:12.5px;}
+  .amount{font-family:var(--mono);font-weight:600;}
+
+  .badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:600;}
+  .badge-source-manual{background:#EFF1F4;color:#4A5361;}
+  .badge-source-csv_import{background:#EAF0F6;color:#2F5D8A;}
+  .badge-source-api{background:#EFF6EE;color:#3D7A4A;}
+  .badge-role{background:var(--rail-accent);color:#333;}
+
+  .empty{padding:48px 20px;text-align:center;color:var(--ink-soft);font-size:13px;}
+  .empty strong{display:block;color:var(--ink);font-size:14px;margin-bottom:6px;}
+
+  .pagination{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:12.5px;color:var(--ink-soft);}
+
+  /* Modal / detail drawer */
+  .overlay{display:none;position:fixed;inset:0;background:rgba(15,20,25,0.4);z-index:50;align-items:stretch;justify-content:flex-end;}
+  .overlay.active{display:flex;}
+  .drawer{width:420px;max-width:92vw;background:var(--panel);height:100%;overflow-y:auto;padding:24px;box-shadow:-8px 0 24px rgba(0,0,0,0.08);}
+  .drawer h2{font-size:16px;margin:0 0 4px;}
+  .drawer-sub{color:var(--ink-soft);font-size:12.5px;margin-bottom:20px;}
+  .drawer-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;gap:16px;}
+  .drawer-row .k{color:var(--ink-soft);flex:none;}
+  .drawer-row .v{text-align:right;word-break:break-word;}
+  .drawer-close{float:right;cursor:pointer;color:var(--ink-soft);font-size:20px;line-height:1;background:none;border:none;}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:18px 20px;margin-bottom:16px;}
+  .card h3{margin:0 0 14px;font-size:14px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .form-actions{display:flex;gap:8px;margin-top:6px;}
+
+  .stat-row{display:flex;gap:14px;margin-bottom:20px;flex-wrap:wrap;}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:14px 18px;min-width:140px;}
+  .stat .num{font-size:22px;font-weight:600;font-family:var(--mono);}
+  .stat .lbl{font-size:11.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.03em;margin-top:2px;}
+
+  .msg-banner{padding:9px 12px;border-radius:3px;font-size:12.5px;margin-bottom:14px;display:none;}
+  .msg-banner.success{background:var(--risk-low-bg);color:var(--risk-low);display:block;}
+  .msg-banner.error{background:var(--risk-high-bg);color:var(--risk-high);display:block;}
+
+  .key-reveal{font-family:var(--mono);background:#12161C;color:#B9E6C9;padding:10px 12px;border-radius:3px;font-size:12px;word-break:break-all;margin:10px 0;}
+  .file-drop{border:1.5px dashed var(--line-strong);border-radius:4px;padding:22px;text-align:center;color:var(--ink-soft);font-size:12.5px;cursor:pointer;}
+  .file-drop:hover{border-color:var(--accent);color:var(--accent);}
+
+  ::placeholder{color:#9AA2AD;}
+</style>
+</head>
+<body>
+
+<!-- ================= AUTH SCREEN ================= -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">Ledger</div>
+        <div class="brand-sub">Fraud &amp; Risk Console</div>
+      </div>
+    </div>
+
+    <div class="auth-tabs">
+      <div class="auth-tab active" data-tab="login">Sign in</div>
+      <div class="auth-tab" data-tab="register">Create account</div>
+    </div>
+
+    <div class="error-msg" id="auth-error"></div>
+
+    <!-- Login form -->
+    <form id="login-form">
+      <div class="field">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" required placeholder="you@company.com">
+      </div>
+      <div class="field">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" required placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn btn-primary">Sign in</button>
+    </form>
+
+    <!-- Register form -->
+    <form id="register-form" style="display:none;">
+      <div class="field">
+        <label for="reg-name">Full name</label>
+        <input type="text" id="reg-name" required placeholder="Jordan Lee">
+      </div>
+      <div class="field">
+        <label for="reg-email">Email</label>
+        <input type="email" id="reg-email" required placeholder="you@company.com">
+      </div>
+      <div class="field">
+        <label for="reg-password">Password</label>
+        <input type="password" id="reg-password" required minlength="8" placeholder="At least 8 characters">
+      </div>
+      <div class="field">
+        <label for="reg-business">Business name</label>
+        <input type="text" id="reg-business" placeholder="e.g. Acme Marketplace">
+      </div>
+      <button type="submit" class="btn btn-primary">Create account</button>
+      <div class="form-note">The first account on this platform becomes the Admin. Every account after that creates a new business and becomes its Business Manager — Analysts are added later from inside the console.</div>
+    </form>
+
+    <div class="hint-box">
+      <strong>Roles at a glance —</strong> Admin manages every business on the platform. Business Manager runs one business: adds transactions, imports CSVs, issues API keys, invites Analysts. Analyst has read-only access to that business's transactions.
+    </div>
+  </div>
+</div>
+
+<!-- ================= APP SCREEN ================= -->
+<div id="app-screen">
+  <div class="shell">
+    <div class="rail">
+      <div class="rail-brand">
+        <div class="brand-mark"></div>
+        <div class="rail-brand-name">Ledger</div>
+      </div>
+      <div class="rail-nav">
+        <div class="rail-link active" data-view="transactions">Transactions</div>
+        <div class="rail-link" data-view="add" id="nav-add">Add transaction</div>
+        <div class="rail-link" data-view="import" id="nav-import">Import CSV</div>
+        <div class="rail-link" data-view="apikeys" id="nav-apikeys">API keys</div>
+        <div class="rail-link" data-view="team" id="nav-team">Team</div>
+        <div class="rail-link" data-view="businesses" id="nav-businesses">Businesses</div>
+      </div>
+      <div class="rail-foot">
+        <div class="rail-user" id="rail-user-name">—</div>
+        <div class="rail-role" id="rail-user-role">—</div>
+        <div class="rail-biz" id="rail-user-biz"></div>
+        <button class="btn btn-ghost btn-sm" id="logout-btn" style="width:100%;">Sign out</button>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="topbar">
+        <div>
+          <h1 id="view-title">Transactions</h1>
+          <div class="topbar-sub" id="view-subtitle">All transaction activity for your business</div>
+        </div>
+      </div>
+
+      <div class="content">
+
+        <!-- ---- Transactions list view ---- -->
+        <div class="view active" id="view-transactions">
+          <div class="stat-row" id="stat-row"></div>
+          <div class="toolbar">
+            <input type="text" id="f-search" placeholder="Search customer, txn ID, IP">
+            <select id="f-payment">
+              <option value="">Any payment method</option>
+              <option value="credit_card">Credit card</option>
+              <option value="debit_card">Debit card</option>
+              <option value="bank_transfer">Bank transfer</option>
+              <option value="wallet">Wallet</option>
+              <option value="crypto">Crypto</option>
+              <option value="cash_on_delivery">Cash on delivery</option>
+              <option value="other">Other</option>
+            </select>
+            <select id="f-source">
+              <option value="">Any source</option>
+              <option value="manual">Manual</option>
+              <option value="csv_import">CSV import</option>
+              <option value="api">API</option>
+            </select>
+            <input type="text" id="f-min" placeholder="Min amount" style="width:110px;">
+            <input type="text" id="f-max" placeholder="Max amount" style="width:110px;">
+            <button class="btn btn-ghost btn-sm" id="apply-filters">Apply</button>
+            <div class="spacer"></div>
+            <button class="btn btn-ghost btn-sm" id="refresh-txns">Refresh</button>
+          </div>
+          <div id="txn-table-wrap"></div>
+          <div class="pagination" id="pagination"></div>
+        </div>
+
+        <!-- ---- Add transaction view ---- -->
+        <div class="view" id="view-add">
+          <div class="card" style="max-width:640px;">
+            <h3>Add a transaction manually</h3>
+            <div class="msg-banner" id="add-msg"></div>
+            <form id="add-form">
+              <div class="grid2">
+                <div class="field"><label>External transaction ID</label><input type="text" id="a-ext" required placeholder="TXN-1001"></div>
+                <div class="field"><label>Customer ID</label><input type="text" id="a-cust" required placeholder="CUST-42"></div>
+                <div class="field"><label>Amount</label><input type="text" id="a-amount" required placeholder="149.00"></div>
+                <div class="field"><label>Currency</label><input type="text" id="a-currency" value="USD"></div>
+                <div class="field"><label>Date &amp; time</label><input type="datetime-local" id="a-datetime" required></div>
+                <div class="field">
+                  <label>Payment method</label>
+                  <select id="a-payment">
+                    <option value="credit_card">Credit card</option>
+                    <option value="debit_card">Debit card</option>
+                    <option value="bank_transfer">Bank transfer</option>
+                    <option value="wallet">Wallet</option>
+                    <option value="crypto">Crypto</option>
+                    <option value="cash_on_delivery">Cash on delivery</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div class="field"><label>IP address</label><input type="text" id="a-ip" placeholder="203.0.113.5"></div>
+                <div class="field"><label>Location</label><input type="text" id="a-location" placeholder="Lahore, PK"></div>
+                <div class="field"><label>Device info</label><input type="text" id="a-device" placeholder="Chrome / Windows"></div>
+                <div class="field"><label>Customer account age (days)</label><input type="text" id="a-age" placeholder="180"></div>
+                <div class="field"><label>Previous transaction count</label><input type="text" id="a-prevcount" placeholder="12"></div>
+              </div>
+              <div class="field"><label>Notes (optional)</label><input type="text" id="a-notes" placeholder="Any context worth recording"></div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Add transaction</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- ---- CSV import view ---- -->
+        <div class="view" id="view-import">
+          <div class="card" style="max-width:560px;">
+            <h3>Import transactions from CSV</h3>
+            <div class="msg-banner" id="import-msg"></div>
+            <p style="font-size:12.5px;color:var(--ink-soft);margin-top:0;">Required columns: <span class="mono">external_transaction_id, customer_id, amount, transaction_datetime</span>. Optional: <span class="mono">currency, payment_method, ip_address, location, device_info, customer_account_age_days, previous_transaction_count, notes</span>.</p>
+            <div class="file-drop" id="file-drop">Click to choose a CSV file, or drag one here</div>
+            <input type="file" id="csv-file" accept=".csv" style="display:none;">
+            <div id="import-result"></div>
+          </div>
+        </div>
+
+        <!-- ---- API keys view ---- -->
+        <div class="view" id="view-apikeys">
+          <div class="card" style="max-width:560px;">
+            <h3>Issue a new API key</h3>
+            <div class="msg-banner" id="apikey-msg"></div>
+            <div class="field"><label>Label</label><input type="text" id="apikey-label" placeholder="Production checkout server"></div>
+            <button class="btn btn-primary btn-sm" id="create-apikey-btn">Generate key</button>
+            <div id="apikey-reveal"></div>
+          </div>
+          <div class="card" style="max-width:560px;">
+            <h3>Existing keys</h3>
+            <div id="apikey-list"></div>
+          </div>
+        </div>
+
+        <!-- ---- Team view ---- -->
+        <div class="view" id="view-team">
+          <div class="card" style="max-width:560px;">
+            <h3>Invite an analyst</h3>
+            <div class="msg-banner" id="invite-msg"></div>
+            <div class="grid2">
+              <div class="field"><label>Full name</label><input type="text" id="inv-name"></div>
+              <div class="field"><label>Email</label><input type="email" id="inv-email"></div>
+              <div class="field"><label>Password</label><input type="password" id="inv-password" minlength="8"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="invite-btn">Send invite</button>
+            <p style="font-size:12px;color:var(--ink-soft);">Analysts get read-only access to this business's transactions.</p>
+          </div>
+        </div>
+
+        <!-- ---- Businesses view (admin only) ---- -->
+        <div class="view" id="view-businesses">
+          <div class="card" style="max-width:560px;">
+            <h3>Create a business</h3>
+            <div class="msg-banner" id="biz-msg"></div>
+            <div class="grid2">
+              <div class="field"><label>Business name</label><input type="text" id="biz-name"></div>
+              <div class="field"><label>Industry</label><input type="text" id="biz-industry" placeholder="e-commerce, fintech…"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="create-biz-btn">Create business</button>
+          </div>
+          <div class="card">
+            <h3>All businesses</h3>
+            <div id="biz-list"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Transaction detail drawer -->
+<div class="overlay" id="detail-overlay">
+  <div class="drawer">
+    <button class="drawer-close" id="drawer-close">&times;</button>
+    <h2>Transaction detail</h2>
+    <div class="drawer-sub" id="drawer-sub"></div>
+    <div id="drawer-body"></div>
+  </div>
+</div>
+
+<script>
+const API_BASE = window.location.origin;
+
+let state = {
+  accessToken: null,
+  user: null,
+  page: 1,
+  pageSize: 25,
+};
+
+// ---------- API helper ----------
+async function api(path, opts = {}) {
+  const headers = opts.headers || {};
+  if (state.accessToken) headers['Authorization'] = 'Bearer ' + state.accessToken;
+  if (opts.body && !(opts.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+  const res = await fetch(API_BASE + path, { ...opts, headers });
+  let data = null;
+  try { data = await res.json(); } catch (e) {}
+  if (!res.ok) {
+    const detail = data && data.detail ? data.detail : ('Request failed (' + res.status + ')');
+    throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
+  }
+  return data;
+}
+
+// ---------- Auth tab switching ----------
+document.querySelectorAll('.auth-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('auth-error').style.display = 'none';
+    if (tab.dataset.tab === 'login') {
+      document.getElementById('login-form').style.display = 'block';
+      document.getElementById('register-form').style.display = 'none';
+    } else {
+      document.getElementById('login-form').style.display = 'none';
+      document.getElementById('register-form').style.display = 'block';
+    }
+  });
+});
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const data = await api('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: document.getElementById('login-email').value,
+        password: document.getElementById('login-password').value,
+      }),
+    });
+    onAuthSuccess(data);
+  } catch (err) {
+    showAuthError(err.message);
+  }
+});
+
+document.getElementById('register-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const payload = {
+      full_name: document.getElementById('reg-name').value,
+      email: document.getElementById('reg-email').value,
+      password: document.getElementById('reg-password').value,
+    };
+    const bizName = document.getElementById('reg-business').value.trim();
+    if (bizName) payload.business_name = bizName;
+    const data = await api('/auth/register', { method: 'POST', body: JSON.stringify(payload) });
+    onAuthSuccess(data);
+  } catch (err) {
+    showAuthError(err.message);
+  }
+});
+
+function onAuthSuccess(data) {
+  state.accessToken = data.access_token;
+  state.user = data.user;
+  localStorage.setItem('ledger_token', data.access_token);
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+  applyRolePermissions();
+  loadTransactions();
+}
+
+document.getElementById('logout-btn').addEventListener('click', () => {
+  state.accessToken = null;
+  state.user = null;
+  localStorage.removeItem('ledger_token');
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+});
+
+// Try to resume session
+(async function tryResume() {
+  const token = localStorage.getItem('ledger_token');
+  if (!token) return;
+  state.accessToken = token;
+  try {
+    const me = await api('/auth/me');
+    state.user = me;
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+    applyRolePermissions();
+    loadTransactions();
+  } catch (e) {
+    state.accessToken = null;
+    localStorage.removeItem('ledger_token');
+  }
+})();
+
+// ---------- Role-based nav ----------
+function applyRolePermissions() {
+  const role = state.user.role;
+  document.getElementById('rail-user-name').textContent = state.user.full_name;
+  document.getElementById('rail-user-role').textContent = role.replace('_', ' ');
+  document.getElementById('rail-user-biz').textContent = state.user.business_id ? ('Business #' + state.user.business_id) : 'Platform-wide';
+
+  document.getElementById('nav-add').style.display = (role === 'business_manager') ? 'block' : 'none';
+  document.getElementById('nav-import').style.display = (role === 'business_manager') ? 'block' : 'none';
+  document.getElementById('nav-apikeys').style.display = (role === 'business_manager') ? 'block' : 'none';
+  document.getElementById('nav-team').style.display = (role === 'business_manager') ? 'block' : 'none';
+  document.getElementById('nav-businesses').style.display = (role === 'admin') ? 'block' : 'none';
+}
+
+// ---------- View switching ----------
+document.querySelectorAll('.rail-link').forEach(link => {
+  link.addEventListener('click', () => switchView(link.dataset.view));
+});
+
+const viewTitles = {
+  transactions: ['Transactions', 'All transaction activity for your business'],
+  add: ['Add transaction', 'Manually record a single transaction'],
+  import: ['Import CSV', 'Bulk-load transactions from a CSV export'],
+  apikeys: ['API keys', 'Credentials for automated transaction ingestion'],
+  team: ['Team', 'Manage analyst access for your business'],
+  businesses: ['Businesses', 'Platform-wide business accounts'],
+};
+
+function switchView(name) {
+  document.querySelectorAll('.rail-link').forEach(l => l.classList.toggle('active', l.dataset.view === name));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
+  document.getElementById('view-title').textContent = viewTitles[name][0];
+  document.getElementById('view-subtitle').textContent = viewTitles[name][1];
+  if (name === 'apikeys') loadApiKeys();
+  if (name === 'businesses') loadBusinesses();
+}
+
+// ---------- Transactions list ----------
+function paymentLabel(pm) {
+  return pm.replace('_', ' ');
+}
+function sourceLabel(s) {
+  return ({manual:'Manual', csv_import:'CSV import', api:'API'})[s] || s;
+}
+
+async function loadTransactions() {
+  const params = new URLSearchParams();
+  params.set('page', state.page);
+  params.set('page_size', state.pageSize);
+  const search = document.getElementById('f-search').value.trim();
+  const payment = document.getElementById('f-payment').value;
+  const source = document.getElementById('f-source').value;
+  const min = document.getElementById('f-min').value.trim();
+  const max = document.getElementById('f-max').value.trim();
+  if (search) params.set('search', search);
+  if (payment) params.set('payment_method', payment);
+  if (source) params.set('source', source);
+  if (min) params.set('min_amount', min);
+  if (max) params.set('max_amount', max);
+
+  try {
+    const data = await api('/transactions?' + params.toString());
+    renderStats(data);
+    renderTable(data.results);
+    renderPagination(data);
+  } catch (err) {
+    document.getElementById('txn-table-wrap').innerHTML = '<div class="empty">' + err.message + '</div>';
+  }
+}
+
+function renderStats(data) {
+  const total = data.total;
+  document.getElementById('stat-row').innerHTML = `
+    <div class="stat"><div class="num">${total}</div><div class="lbl">Matching transactions</div></div>
+    <div class="stat"><div class="num">${data.results.length}</div><div class="lbl">On this page</div></div>
+  `;
+}
+
+function renderTable(txns) {
+  const wrap = document.getElementById('txn-table-wrap');
+  if (!txns.length) {
+    wrap.innerHTML = '<div class="empty"><strong>No transactions match</strong>Try widening your filters, or add a transaction to get started.</div>';
+    return;
+  }
+  let rows = txns.map(t => `
+    <tr class="row-clickable" data-id="${t.id}">
+      <td class="mono">${t.external_transaction_id}</td>
+      <td>${t.customer_id}</td>
+      <td class="amount">${t.currency} ${t.amount.toFixed(2)}</td>
+      <td>${new Date(t.transaction_datetime).toLocaleString()}</td>
+      <td>${paymentLabel(t.payment_method)}</td>
+      <td>${t.location || '—'}</td>
+      <td><span class="badge badge-source-${t.source}">${sourceLabel(t.source)}</span></td>
+    </tr>
+  `).join('');
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Transaction ID</th><th>Customer</th><th>Amount</th><th>Date &amp; time</th><th>Payment</th><th>Location</th><th>Source</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+  wrap.querySelectorAll('tr[data-id]').forEach(row => {
+    row.addEventListener('click', () => openDetail(row.dataset.id));
+  });
+}
+
+function renderPagination(data) {
+  const maxPage = Math.max(1, Math.ceil(data.total / data.page_size));
+  document.getElementById('pagination').innerHTML = `
+    <button class="btn btn-ghost btn-sm" id="prev-page" ${data.page <= 1 ? 'disabled' : ''}>Previous</button>
+    <span>Page ${data.page} of ${maxPage}</span>
+    <button class="btn btn-ghost btn-sm" id="next-page" ${data.page >= maxPage ? 'disabled' : ''}>Next</button>
+  `;
+  const prev = document.getElementById('prev-page');
+  const next = document.getElementById('next-page');
+  if (prev) prev.addEventListener('click', () => { state.page--; loadTransactions(); });
+  if (next) next.addEventListener('click', () => { state.page++; loadTransactions(); });
+}
+
+document.getElementById('apply-filters').addEventListener('click', () => { state.page = 1; loadTransactions(); });
+document.getElementById('refresh-txns').addEventListener('click', () => loadTransactions());
+document.getElementById('f-search').addEventListener('keydown', (e) => { if (e.key === 'Enter') { state.page = 1; loadTransactions(); } });
+
+// ---------- Detail drawer ----------
+async function openDetail(id) {
+  try {
+    const t = await api('/transactions/' + id);
+    document.getElementById('drawer-sub').textContent = 'Recorded ' + new Date(t.created_at).toLocaleString();
+    const rows = [
+      ['Transaction ID', t.external_transaction_id],
+      ['Internal ID', '#' + t.id],
+      ['Customer ID', t.customer_id],
+      ['Amount', t.currency + ' ' + t.amount.toFixed(2)],
+      ['Date & time', new Date(t.transaction_datetime).toLocaleString()],
+      ['Payment method', paymentLabel(t.payment_method)],
+      ['IP address', t.ip_address || '—'],
+      ['Location', t.location || '—'],
+      ['Device info', t.device_info || '—'],
+      ['Customer account age', t.customer_account_age_days != null ? t.customer_account_age_days + ' days' : '—'],
+      ['Previous transactions', t.previous_transaction_count != null ? t.previous_transaction_count : '—'],
+      ['Source', sourceLabel(t.source)],
+      ['Notes', t.notes || '—'],
+    ];
+    document.getElementById('drawer-body').innerHTML = rows.map(([k,v]) => `
+      <div class="drawer-row"><div class="k">${k}</div><div class="v">${v}</div></div>
+    `).join('');
+    document.getElementById('detail-overlay').classList.add('active');
+  } catch (err) {
+    alert(err.message);
+  }
+}
+document.getElementById('drawer-close').addEventListener('click', () => document.getElementById('detail-overlay').classList.remove('active'));
+document.getElementById('detail-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'detail-overlay') e.currentTarget.classList.remove('active');
+});
+
+// ---------- Add transaction ----------
+document.getElementById('add-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById('add-msg');
+  msg.className = 'msg-banner'; msg.style.display = 'none';
+  try {
+    const dtLocal = document.getElementById('a-datetime').value;
+    const payload = {
+      external_transaction_id: document.getElementById('a-ext').value,
+      customer_id: document.getElementById('a-cust').value,
+      amount: parseFloat(document.getElementById('a-amount').value),
+      currency: document.getElementById('a-currency').value || 'USD',
+      transaction_datetime: dtLocal,
+      payment_method: document.getElementById('a-payment').value,
+      ip_address: document.getElementById('a-ip').value || null,
+      location: document.getElementById('a-location').value || null,
+      device_info: document.getElementById('a-device').value || null,
+      customer_account_age_days: document.getElementById('a-age').value ? parseInt(document.getElementById('a-age').value) : null,
+      previous_transaction_count: document.getElementById('a-prevcount').value ? parseInt(document.getElementById('a-prevcount').value) : null,
+      notes: document.getElementById('a-notes').value || null,
+    };
+    await api('/transactions', { method: 'POST', body: JSON.stringify(payload) });
+    msg.textContent = 'Transaction added.';
+    msg.className = 'msg-banner success';
+    document.getElementById('add-form').reset();
+    document.getElementById('a-currency').value = 'USD';
+  } catch (err) {
+    msg.textContent = err.message;
+    msg.className = 'msg-banner error';
+  }
+});
+
+// ---------- CSV import ----------
+document.getElementById('file-drop').addEventListener('click', () => document.getElementById('csv-file').click());
+document.getElementById('csv-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const msg = document.getElementById('import-msg');
+  msg.style.display = 'none';
+  const resultEl = document.getElementById('import-result');
+  resultEl.innerHTML = '<p style="font-size:12.5px;color:var(--ink-soft);">Importing…</p>';
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const result = await api('/transactions/import-csv', { method: 'POST', body: formData });
+    resultEl.innerHTML = `
+      <div class="stat-row" style="margin-top:14px;">
+        <div class="stat"><div class="num">${result.total_rows}</div><div class="lbl">Rows read</div></div>
+        <div class="stat"><div class="num">${result.imported}</div><div class="lbl">Imported</div></div>
+        <div class="stat"><div class="num">${result.failed}</div><div class="lbl">Failed</div></div>
+      </div>
+      ${result.errors.length ? '<div class="msg-banner error" style="display:block;">' + result.errors.join('<br>') + '</div>' : ''}
+    `;
+  } catch (err) {
+    msg.textContent = err.message;
+    msg.className = 'msg-banner error';
+    msg.style.display = 'block';
+  }
+  e.target.value = '';
+});
+
+// ---------- API keys ----------
+document.getElementById('create-apikey-btn').addEventListener('click', async () => {
+  const msg = document.getElementById('apikey-msg');
+  msg.style.display = 'none';
+  try {
+    const label = encodeURIComponent(document.getElementById('apikey-label').value || '');
+    const data = await api('/transactions/api-keys?label=' + label, { method: 'POST' });
+    document.getElementById('apikey-reveal').innerHTML = `
+      <p style="font-size:12px;color:var(--ink-soft);margin-bottom:4px;">Copy this now — it won't be shown again:</p>
+      <div class="key-reveal">${data.api_key}</div>
+    `;
+    document.getElementById('apikey-label').value = '';
+    loadApiKeys();
+  } catch (err) {
+    msg.textContent = err.message;
+    msg.className = 'msg-banner error';
+    msg.style.display = 'block';
+  }
+});
+
+async function loadApiKeys() {
+  try {
+    const keys = await api('/transactions/api-keys');
+    const listEl = document.getElementById('apikey-list');
+    if (!keys.length) {
+      listEl.innerHTML = '<div class="empty">No API keys issued yet.</div>';
+      return;
+    }
+    listEl.innerHTML = `
+      <table>
+        <thead><tr><th>Label</th><th>Prefix</th><th>Status</th><th>Created</th><th>Last used</th></tr></thead>
+        <tbody>
+          ${keys.map(k => `
+            <tr>
+              <td>${k.label || '—'}</td>
+              <td class="mono">${k.key_prefix}…</td>
+              <td>${k.is_active ? 'Active' : 'Revoked'}</td>
+              <td>${new Date(k.created_at).toLocaleDateString()}</td>
+              <td>${k.last_used_at ? new Date(k.last_used_at).toLocaleString() : 'Never'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch (err) {
+    document.getElementById('apikey-list').innerHTML = '<div class="empty">' + err.message + '</div>';
+  }
+}
+
+// ---------- Team / invite ----------
+document.getElementById('invite-btn').addEventListener('click', async () => {
+  const msg = document.getElementById('invite-msg');
+  msg.style.display = 'none';
+  try {
+    const payload = {
+      full_name: document.getElementById('inv-name').value,
+      email: document.getElementById('inv-email').value,
+      password: document.getElementById('inv-password').value,
+      role: 'analyst',
+    };
+    await api('/auth/invite', { method: 'POST', body: JSON.stringify(payload) });
+    msg.textContent = 'Analyst invited. They can sign in with the email and password you set.';
+    msg.className = 'msg-banner success';
+    msg.style.display = 'block';
+    document.getElementById('inv-name').value = '';
+    document.getElementById('inv-email').value = '';
+    document.getElementById('inv-password').value = '';
+  } catch (err) {
+    msg.textContent = err.message;
+    msg.className = 'msg-banner error';
+    msg.style.display = 'block';
+  }
+});
+
+// ---------- Businesses (admin) ----------
+document.getElementById('create-biz-btn').addEventListener('click', async () => {
+  const msg = document.getElementById('biz-msg');
+  msg.style.display = 'none';
+  try {
+    const payload = {
+      name: document.getElementById('biz-name').value,
+      industry: document.getElementById('biz-industry').value || null,
+    };
+    await api('/admin/businesses', { method: 'POST', body: JSON.stringify(payload) });
+    msg.textContent = 'Business created.';
+    msg.className = 'msg-banner success';
+    msg.style.display = 'block';
+    document.getElementById('biz-name').value = '';
+    document.getElementById('biz-industry').value = '';
+    loadBusinesses();
+  } catch (err) {
+    msg.textContent = err.message;
+    msg.className = 'msg-banner error';
+    msg.style.display = 'block';
+  }
+});
+
+async function loadBusinesses() {
+  try {
+    const list = await api('/admin/businesses');
+    const el = document.getElementById('biz-list');
+    if (!list.length) { el.innerHTML = '<div class="empty">No businesses yet.</div>'; return; }
+    el.innerHTML = `
+      <table>
+        <thead><tr><th>Name</th><th>Industry</th><th>Created</th></tr></thead>
+        <tbody>
+          ${list.map(b => `<tr><td>${b.name}</td><td>${b.industry || '—'}</td><td>${new Date(b.created_at).toLocaleDateString()}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch (err) {
+    document.getElementById('biz-list').innerHTML = '<div class="empty">' + err.message + '</div>';
+  }
+}
+</script>
+</body>
+</html>
